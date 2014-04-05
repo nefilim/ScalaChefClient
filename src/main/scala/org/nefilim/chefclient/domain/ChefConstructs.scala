@@ -4,12 +4,20 @@ package org.nefilim.chefclient.domain
 /**
  * Created by peter on 4/4/14.
  */
-object Endpoints {
+object ChefConstructs {
   case class ChefNode(name: String, uri: String)
   case class NodeList(nodes: List[ChefNode])
 
-  case class SearchResult[T](total: Int, start: Int, rows: List[T])
-  case class NodeIndexResultNode(name: String, chef_environment: String, automatic: OhaiValues, json_class: String, chef_type: String, run_list: List[String])
+  case class ChefSearchResult[T <: ChefSearchResultRow](total: Int, start: Int, rows: List[T])
+  sealed trait ChefSearchResultRow
+  case class NodeIndexResultRow(
+                 name: String,
+                 chef_environment: String,
+                 automatic: OhaiValues,
+                 json_class: String,
+                 chef_type: String,
+                 run_list: List[String]) extends ChefSearchResultRow
+
   case class OhaiValues(
                  os: String,
                  os_version: String,

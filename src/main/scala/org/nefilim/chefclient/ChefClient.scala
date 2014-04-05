@@ -12,7 +12,7 @@ import spray.http.HttpRequest
 import spray.http.HttpHeaders.RawHeader
 import scala.util.{Try, Failure, Success}
 import spray.http.HttpResponse
-import org.nefilim.chefclient.domain.Endpoints.{SearchResult, NodeIndexResultNode, ChefNode}
+import org.nefilim.chefclient.domain.ChefConstructs.{ChefSearchResult, NodeIndexResultRow, ChefNode}
 import spray.httpx.PipelineException
 import org.nefilim.chefclient.domain.NodeIndex
 import spray.httpx.encoding.Gzip
@@ -107,10 +107,10 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
     }
   }
 
-  def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[SearchResult[NodeIndexResultNode]] = {
+  def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[ChefSearchResult[NodeIndexResultRow]] = {
     val futureResponse = fireRequest("/search" + NodeIndex.path, Query("q" -> query, "rows" -> rows.toString, "start" -> start.toString, "sort" -> sort))
     futureResponse.map { response =>
-      parse(response.entity.asString).extract[SearchResult[NodeIndexResultNode]]
+      parse(response.entity.asString).extract[ChefSearchResult[NodeIndexResultRow]]
     }
   }
 
