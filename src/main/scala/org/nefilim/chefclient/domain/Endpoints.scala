@@ -9,7 +9,16 @@ object Endpoints {
   case class NodeList(nodes: List[ChefNode])
 
   case class SearchResult[T](total: Int, start: Int, rows: List[T])
-  case class NodeIndexResultNode(name: String, chef_environment: String, json_class: String, chef_type: String, run_list: List[String])
+  case class NodeIndexResultNode(name: String, chef_environment: String, automatic: OhaiValues, json_class: String, chef_type: String, run_list: List[String])
+  case class OhaiValues(
+                 os: String,
+                 os_version: String,
+                 hostname: String,
+                 fqdn: String,
+                 domain: String,
+                 ipaddress: String,
+                 uptime_seconds: Int,
+                 roles: List[String])
 
   case class ResourceCreationResponse(uri: String)
 }
