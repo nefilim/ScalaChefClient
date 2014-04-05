@@ -3,7 +3,7 @@ ChefClientScala
 
 Very minimal Chef Server async client written in Scala (2.10) with Spray (1.3.1).
 
-Only supports node listing and node index search right now, with very limited response parsing of the search results. 
+Only supports node listing and node index search right now, with very limited response parsing of the search results (see [SearchResults]).
 
 
 Sample Usage
@@ -25,3 +25,6 @@ Sample Usage
           logger.error("search result failure {}", failure)
       }
 ```
+
+
+[SearchResults]:https://github.com/nefilim/ChefClientScala/blob/master/src/main/scala/org/nefilim/chefclient/domain/Endpoints.scala
