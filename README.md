@@ -27,4 +27,4 @@ Sample Usage
 ```
 
 
-[SearchResults]:https://github.com/nefilim/ChefClientScala/blob/master/src/main/scala/org/nefilim/chefclient/domain/Endpoints.scala
+[SearchResults]:https://github.com/nefilim/ChefClientScala/blob/master/src/main/scala/org/nefilim/chefclient/domain/ChefConstructs.scala
