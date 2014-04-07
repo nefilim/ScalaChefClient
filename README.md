@@ -1,9 +1,9 @@
 ChefClientScala
 ===============
 
-Very minimal Chef Server async client written in Scala (2.10) with Spray (1.3.1).
+Very minimal Chef Server async client written in Scala (2.10) with Spray (1.3.1). The motivation for this library is to do network discovery and drive an operational dashboard.
 
-Only supports node listing and node index search right now, with limited response parsing of the search results (see [SearchResults]).
+Only supports node listing and node index search right now, with limited response parsing of the search results (see [SearchResults]), everything that is needed to satisfy the original motivation.
 
 
 Sample Usage
