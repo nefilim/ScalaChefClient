@@ -17,7 +17,7 @@ object MyBuild extends Build {
     organization := "org.nefilim",
     scalaVersion := myScalaVersion,
     version := "0.1-SNAPSHOT"
-  )                                                                                          o
+  )
 
   lazy val publishSettings = Seq(
     publishArtifact in Test := false,
