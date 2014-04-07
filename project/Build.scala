@@ -2,6 +2,7 @@ import sbt._
 import sbt.Keys._
 import net.virtualvoid.sbt.graph.Plugin._
 import scala.Some
+import sbtrelease.ReleasePlugin._
 
 object MyBuild extends Build {
 
@@ -50,7 +51,7 @@ object MyBuild extends Build {
         </developers>)
   )
 
-  lazy val defaultSettings = buildSettings ++ publishSettings ++ Seq(
+  lazy val defaultSettings = buildSettings ++ publishSettings ++ releaseSettings ++ Seq(
     scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.7", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls"),
     testOptions in Test += Tests.Argument("-oDF")
   )
