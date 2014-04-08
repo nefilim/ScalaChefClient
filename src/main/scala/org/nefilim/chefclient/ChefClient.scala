@@ -81,7 +81,7 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
     authHeaders
   }
 
-  val pipeline: HttpRequest => Future[HttpResponse] = (
+  lazy val pipeline: HttpRequest => Future[HttpResponse] = (
       addOptionalHeader(authHeadersForRequest)
       ~> addHeader("X-Chef-Version", ChefClient.clientVersion)
       ~> addHeader("X-Ops-UserId", clientId)
@@ -110,7 +110,13 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
   def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[ChefSearchResult[NodeIndexResultRow]] = {
     val futureResponse = fireRequest("/search" + NodeIndex.path, Query("q" -> query, "rows" -> rows.toString, "start" -> start.toString, "sort" -> sort))
     futureResponse.map { response =>
-      parse(response.entity.asString).extract[ChefSearchResult[NodeIndexResultRow]]
+      Try(parse(response.entity.asString).extract[ChefSearchResult[NodeIndexResultRow]]) match {
+        case Failure(failure) =>
+          logger.error(s"failed to deserialize response ${response.entity.asString}", failure)
+          throw new PipelineException(failure.toString)
+        case Success(nodeList) =>
+          nodeList
+      }
     }
   }
 
