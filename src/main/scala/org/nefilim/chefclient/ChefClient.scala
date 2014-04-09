@@ -50,7 +50,7 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
   import system.dispatcher
 
   def logTheRequest(request: HttpRequest) {
-    logger.debug("the HTTP request", request)
+    logger.debug("the HTTP request {}", request)
   }
 
   def logServerResponse(response: HttpResponse) {

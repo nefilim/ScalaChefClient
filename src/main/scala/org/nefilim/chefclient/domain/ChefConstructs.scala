@@ -26,7 +26,18 @@ object ChefConstructs {
                  domain: String,
                  ipaddress: String,
                  uptime_seconds: Int,
-                 roles: List[String])
+                 roles: List[String],
+                 ec2: Option[EC2Values])
+
+  case class EC2Values(
+                ami_id: String,
+                block_device_mapping_ami: String,
+                block_device_mapping_root: String,
+                hostname: String,
+                instance_action: String,
+                instance_id: String,
+                kernel_id: String,
+                mac: String)
 
   case class ResourceCreationResponse(uri: String)
 }
