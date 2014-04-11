@@ -8,7 +8,7 @@ object ChefConstructs {
   case class ChefNode(name: String, uri: String)
   case class NodeList(nodes: List[ChefNode])
 
-  case class ChefSearchResult[T <: ChefSearchResultRow](total: Int, start: Int, rows: List[T])
+  case class ChefSearchResult[T <: ChefSearchResultRow](total: Int, start: Int, rows: Set[T])
   sealed trait ChefSearchResultRow
   case class NodeIndexResultRow(
                  name: String,
@@ -26,7 +26,7 @@ object ChefConstructs {
                  domain: String,
                  ipaddress: String,
                  uptime_seconds: Int,
-                 roles: List[String],
+                 roles: Set[String],
                  ec2: Option[EC2Values])
 
   case class EC2Values(
