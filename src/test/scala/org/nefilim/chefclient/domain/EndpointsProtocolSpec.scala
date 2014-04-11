@@ -56,11 +56,11 @@ class EndpointsProtocolSpec extends FunSpec with Matchers with Logging {
       val jsonAST = parse(json)
       val searchResult = jsonAST.extract[ChefSearchResult[NodeIndexResultRow]]
       searchResult.rows.size should be (1)
-      searchResult.rows(0).name should be ("client-id")
-      searchResult.rows(0).chef_environment should be ("localtest")
-      searchResult.rows(0).chef_type should be ("node")
-      searchResult.rows(0).run_list.size should be (1)
-      searchResult.rows(0).run_list(0) should be ("role[reporting-app]")
+      searchResult.rows.head.name should be ("client-id")
+      searchResult.rows.head.chef_environment should be ("localtest")
+      searchResult.rows.head.chef_type should be ("node")
+      searchResult.rows.head.run_list.size should be (1)
+      searchResult.rows.head.run_list(0) should be ("role[reporting-app]")
     }
   }
 
