@@ -8,17 +8,22 @@ import spray.client.pipelining._
 import akka.actor.ActorSystem
 import java.text.{SimpleDateFormat, DateFormat}
 import java.util.TimeZone
-import spray.http.HttpRequest
-import spray.http.HttpHeaders.RawHeader
-import scala.util.{Try, Failure, Success}
-import spray.http.HttpResponse
-import org.nefilim.chefclient.domain.ChefConstructs.{ChefSearchResult, NodeIndexResultRow, ChefNode}
-import spray.httpx.PipelineException
+import scala.util.Try
+import org.nefilim.chefclient.domain.ChefConstructs._
 import org.nefilim.chefclient.domain.NodeIndex
 import spray.httpx.encoding.Gzip
 import spray.http.Uri.Query
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
+import spray.http.HttpRequest
+import org.nefilim.chefclient.domain.ChefConstructs.ChefNode
+import org.nefilim.chefclient.domain.ChefConstructs.NodeIndexResultRow
+import spray.http.HttpHeaders.RawHeader
+import org.nefilim.chefclient.domain.ChefConstructs.ChefSearchResult
+import scala.util.Failure
+import scala.Some
+import spray.http.HttpResponse
+import scala.util.Success
 
 /**
  * Created by peter on 4/3/14.
@@ -33,8 +38,8 @@ object ChefClient {
 
   java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider())
 
-  def apply(keyPath: String, clientId: String, host: String = "api.opscode.com", organizationPath: Option[String] = None) = {
-    new ChefClient(
+  def apply(keyPath: String, clientId: String, host: String = "api.opscode.com", organizationPath: Option[String] = None): ChefClient = {
+    new ConfiguredChefClient(
       keyPath,
       clientId,
       host.stripSuffix("/"),
@@ -44,28 +49,35 @@ object ChefClient {
 }
 
 import ChefClient._
-class ChefClient(keyPath: String, clientId: String, host: String, organizationPath: Option[String]) extends Logging {
+trait ChefClient {
+  def nodeList(): Future[Either[ChefClientFailedResult, List[ChefNode]]]
+  def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[Either[ChefClientFailedResult, ChefSearchResult[NodeIndexResultRow]]]
+  def deleteNode(node: String): Future[Either[ChefClientFailedResult, LastKnownNodeState]]
+  def deleteClient(client: String): Future[Either[ChefClientFailedResult, HttpResponse]]
+}
+
+class ConfiguredChefClient(keyPath: String, clientId: String, host: String, organizationPath: Option[String]) extends ChefClient with Logging {
   private val privateKey = ChefClientCryptUtil.getPrivateKey(keyPath)
 
   import system.dispatcher
 
-  def logTheRequest(request: HttpRequest) {
+  private[chefclient] def logTheRequest(request: HttpRequest) {
     logger.debug("the HTTP request {}", request)
   }
 
-  def logServerResponse(response: HttpResponse) {
+  private[chefclient] def logServerResponse(response: HttpResponse) {
     logger.debug("the HTTP response {}", response)
   }
 
-  def addOptionalHeader(headersForRequest: HttpRequest => List[HttpHeader]): RequestTransformer = { request =>
+  private[chefclient] def addOptionalHeader(headersForRequest: HttpRequest => List[HttpHeader]): RequestTransformer = { request =>
     request.mapHeaders(headers => headersForRequest(request) ++ headers)
   }
 
-  def authHeadersForRequest(request: HttpRequest): List[HttpHeader] = {
+  private[chefclient] def authHeadersForRequest(request: HttpRequest): List[HttpHeader] = {
     val formatter: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     formatter.setTimeZone(TimeZone.getTimeZone("UTC"))
     val timestamp = formatter.format(new java.util.Date())
-    val method = HttpMethods.GET
+    val method = request.method
 
     val hashedPath = Base64.encodeBase64String(ChefClientCryptUtil.sha1(request.uri.path.toString()))
     val hashedBody = Base64.encodeBase64String(ChefClientCryptUtil.sha1(request.entity.asString))
@@ -81,7 +93,7 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
     authHeaders
   }
 
-  lazy val pipeline: HttpRequest => Future[HttpResponse] = (
+  private[chefclient] lazy val pipeline: HttpRequest => Future[HttpResponse] = (
       addOptionalHeader(authHeadersForRequest)
       ~> addHeader("X-Chef-Version", ChefClient.clientVersion)
       ~> addHeader("X-Ops-UserId", clientId)
@@ -94,28 +106,46 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
       ~> logResponse(response => logServerResponse(response))
     )
 
-  def nodeList(): Future[List[ChefNode]] = {
-    val futureResponse = fireRequest("/nodes")
-    futureResponse.map[List[ChefNode]] { response =>
-      Try(parse(response.entity.asString).extract[Map[String, String]]) match {
-        case Failure(failure) =>
-          logger.error(s"failed to deserialize response ${response.entity.asString}", failure)
-          throw new PipelineException(failure.toString)
-        case Success(nodeList) =>
-          nodeList.toList.map { case (k, v) => ChefNode(k, v) }
-      }
+  private def extractResponse[T : Manifest](httpResponse: HttpResponse): Either[ChefClientFailedResult, T] = {
+    httpResponse match {
+      case r if r.status.isSuccess =>
+        Try(parse(httpResponse.entity.asString).extract[T]) match {
+          case Failure(failure) =>
+            logger.error(s"failed to deserialize response ${httpResponse.entity.asString}", failure)
+            Left(ChefClientFailedResult(httpResponse, Some(failure)))
+          case Success(result) =>
+            Right(result)
+        }
+      case _ =>
+        logger.error("the request failed {}", httpResponse)
+        Left(ChefClientFailedResult(httpResponse, None))
     }
   }
 
-  def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[ChefSearchResult[NodeIndexResultRow]] = {
+  def nodeList(): Future[Either[ChefClientFailedResult, List[ChefNode]]] = {
+    val futureResponse = fireRequest("/nodes")
+    futureResponse.map(httpResponse => extractResponse[Map[String, String]](httpResponse)).map {
+      case Right(nodeList) =>
+        Right(nodeList.toList.map { case (k, v) => ChefNode(k, v) })
+      case Left(l) =>
+        Left(l)
+    }
+  }
+
+  def searchNodeIndex(query: String, start: Int = 0, rows: Int = 1000, sort: String = ""): Future[Either[ChefClientFailedResult, ChefSearchResult[NodeIndexResultRow]]] = {
     val futureResponse = fireRequest("/search" + NodeIndex.path, Query("q" -> query, "rows" -> rows.toString, "start" -> start.toString, "sort" -> sort))
-    futureResponse.map { response =>
-      Try(parse(response.entity.asString).extract[ChefSearchResult[NodeIndexResultRow]]) match {
-        case Failure(failure) =>
-          logger.error(s"failed to deserialize response ${response.entity.asString}", failure)
-          throw new PipelineException(failure.toString)
-        case Success(nodeList) =>
-          nodeList
+    futureResponse.map(extractResponse[ChefSearchResult[NodeIndexResultRow]])
+  }
+
+  def deleteNode(node: String): Future[Either[ChefClientFailedResult, LastKnownNodeState]] = {
+    fireRequest("/nodes/" + node, method = HttpMethods.DELETE).map(extractResponse[LastKnownNodeState](_))
+  }
+
+  def deleteClient(client: String): Future[Either[ChefClientFailedResult, HttpResponse]] = {
+    fireRequest("/clients/" + client, method = HttpMethods.DELETE).map { response =>
+      response match {
+        case r if r.status.isSuccess => Right(response)
+        case _ => Left(ChefClientFailedResult(response))
       }
     }
   }
@@ -130,8 +160,14 @@ class ChefClient(keyPath: String, clientId: String, host: String, organizationPa
     )
   }
 
-  private[chefclient] def fireRequest(requestPath: String, query: Query = Query.Empty, body: Option[String] = None): Future[HttpResponse] = {
+  private[chefclient] def fireRequest(requestPath: String, query: Query = Query.Empty, body: Option[String] = None, method: HttpMethod = HttpMethods.GET): Future[HttpResponse] = {
     // TODO build appropriate Method
-    pipeline(Get(uri(path = organizationPath.getOrElse("") + requestPath, query = query)))
+    method match {
+      case HttpMethods.GET =>
+        pipeline(Get(uri(path = organizationPath.getOrElse("") + requestPath, query = query)))
+      case HttpMethods.DELETE =>
+        pipeline(Delete(uri(path = organizationPath.getOrElse("") + requestPath, query = query)))
+    }
   }
 }
+

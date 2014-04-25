@@ -1,12 +1,23 @@
 package org.nefilim.chefclient.domain
 
+import spray.http.HttpResponse
+
 
 /**
  * Created by peter on 4/4/14.
  */
 object ChefConstructs {
+  case class ChefClientFailedResult(response: HttpResponse, exception: Option[Throwable] = None, message: Option[String] = None)
+
   case class ChefNode(name: String, uri: String)
   case class NodeList(nodes: List[ChefNode])
+
+
+  case class LastKnownNodeState(
+                  name: String,
+                  chef_type: String,
+                  json_class: String,
+                  chef_environment: Option[String])
 
   case class ChefSearchResult[T <: ChefSearchResultRow](total: Int, start: Int, rows: Set[T])
   sealed trait ChefSearchResultRow
