@@ -13,6 +13,12 @@ Supported operations
 Sample Usage
 ------------
 
+Operations returns:
+```scala
+Future[Either[ChefClientFailedResult, T]]
+```
+
+Usage:
 ```scala
       val chefClient = ChefClient(keyPath, "theuser", "api.opscode.com", Some("/organizations/myorg"))
       val f1 = chefClient.nodeList()
@@ -28,7 +34,7 @@ Sample Usage
           logger.error("node list failure {}", failure)
       }
 
-      val f2 = chefClient.searchNodeIndex("namep:*")
+      val f2 = chefClient.searchNodeIndex("name:*")
       f2.onComplete {
         case Success(searchResult) =>
           searchResult match {
@@ -41,7 +47,7 @@ Sample Usage
           logger.error("search result failure {}", failure)
       }
 
-      val f3 = chefClient.deleteClient("ToastyPipeRC3-collector-app-i-e3ade6eb")
+      val f3 = chefClient.deleteClient("app-i-e3ade6eb")
       f3.onComplete {
         case Success(result) =>
           logger.info("deleted client {}", result)
@@ -51,7 +57,7 @@ Sample Usage
           logger.error("delete client failure {}", failure)
       }
 
-      val f4 = chefClient.deleteNode("ToastyPipeRC3-collector-app-i-e3ade6eb")
+      val f4 = chefClient.deleteNode("app-i-e3ade6eb")
       f4.onComplete {
         case Success(result) =>
           logger.info("deleted node {}", result)
