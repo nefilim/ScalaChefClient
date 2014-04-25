@@ -3,7 +3,11 @@ ChefClientScala
 
 Very minimal Chef Server async client written in Scala (2.10) with Spray (1.3.1). The motivation for this library is to do network discovery and drive an operational dashboard.
 
-Only supports node listing and node index search right now, with limited response parsing of the search results (see [SearchResults]), everything that is needed to satisfy the original motivation.
+Supported operations
+* List all nodes
+* Search the node index
+* Deleting a node
+* Deleting a client
 
 
 Sample Usage
@@ -11,18 +15,49 @@ Sample Usage
 
 ```scala
       val chefClient = ChefClient(keyPath, "theuser", "api.opscode.com", Some("/organizations/myorg"))
-      chefClient.nodeList().onComplete {
+      val f1 = chefClient.nodeList()
+      f1.onComplete {
         case Success(success) =>
-          success.foreach(logger.info("node {}", _))
+          success match {
+            case Right(r) =>
+              r.foreach(logger.info("node {}", _))
+            case Left(l) =>
+              logger.error("failed {}", l)
+          }
         case Failure(failure) =>
           logger.error("node list failure {}", failure)
       }
 
-      chefClient.searchNodeIndex("name:*").onComplete {
+      val f2 = chefClient.searchNodeIndex("namep:*")
+      f2.onComplete {
         case Success(searchResult) =>
-          searchResult.rows.foreach(logger.info("node {}", _))
+          searchResult match {
+            case Right(r) =>
+              r.rows.foreach(logger.info("node {}", _))
+            case Left(l) =>
+              logger.error("failed {}", l)
+          }
         case Failure(failure) =>
           logger.error("search result failure {}", failure)
+      }
+
+      val f3 = chefClient.deleteClient("ToastyPipeRC3-collector-app-i-e3ade6eb")
+      f3.onComplete {
+        case Success(result) =>
+          logger.info("deleted client {}", result)
+          result.isRight should be (true)
+          result.right.get.status should be (StatusCodes.OK)
+        case Failure(failure) =>
+          logger.error("delete client failure {}", failure)
+      }
+
+      val f4 = chefClient.deleteNode("ToastyPipeRC3-collector-app-i-e3ade6eb")
+      f4.onComplete {
+        case Success(result) =>
+          logger.info("deleted node {}", result)
+          result.isRight should be (true)
+        case Failure(failure) =>
+          logger.error("delete node failure {}", failure)
       }
 ```
 
